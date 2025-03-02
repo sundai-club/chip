@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 
 export default function CreateTaskPage() {
   const [step, setStep] = useState(1)
