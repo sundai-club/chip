@@ -1,0 +1,9 @@
+---
+description: Calling the axios api client
+globs: *.tsx
+---
+Example usage:
+
+const tasks = await apiClient.get('/api/chip/tasks/')
+
+Notice how it does NOT return a `response`. It returns the parsed json.  Do NOT try to access `.data` on what is returned, as it is already parsed.

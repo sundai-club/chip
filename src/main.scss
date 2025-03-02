@@ -1,0 +1,11 @@
+@import './styles/base';
+
+body {
+    height: 100vh;
+    background-color: $background-color;
+    font-family: 'Roboto', sans-serif;
+}
+
+#root {
+    height: 100%;
+} 
