@@ -1,0 +1,48 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .gift-bounce {
+      animation: bounce 2s ease-in-out infinite alternate;
+    }
+    .ribbon-wave {
+      animation: wave 3s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-15px); }
+    }
+    @keyframes wave {
+      0%, 100% { transform: skewX(0deg); }
+      50% { transform: skewX(5deg); }
+    }
+  </style>
+  
+  <!-- Background -->
+  <rect width="400" height="300" fill="#E8F5E9" />
+  
+  <!-- Shopping bag -->
+  <path d="M100,100 L300,100 L320,250 L80,250 Z" fill="#9575CD" />
+  <path d="M130,100 L130,70 C130,40 170,40 170,70 L170,100" stroke="#7E57C2" stroke-width="10" fill="none" />
+  <path d="M230,100 L230,70 C230,40 270,40 270,70 L270,100" stroke="#7E57C2" stroke-width="10" fill="none" />
+  
+  <!-- Gift box -->
+  <g class="gift-bounce" style="animation-delay: 0.2s;">
+    <rect x="150" y="150" width="100" height="80" fill="#F44336" />
+    <rect x="190" y="130" width="20" height="100" fill="#4CAF50" />
+    <rect x="150" y="170" width="100" height="20" fill="#4CAF50" />
+    <path class="ribbon-wave" d="M190,130 C195,125 205,125 210,130" stroke="#4CAF50" stroke-width="5" fill="none" />
+  </g>
+  
+  <!-- Shopping items -->
+  <circle cx="120" cy="140" r="15" fill="#FFC107" />
+  <rect x="260" y="140" width="30" height="20" fill="#2196F3" />
+  
+  <!-- Price tag -->
+  <g transform="translate(320, 120) rotate(30)">
+    <rect x="0" y="0" width="40" height="25" fill="#FFECB3" />
+    <text x="20" y="18" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle" fill="#795548">$25</text>
+  </g>
+  
+  <!-- Text -->
+  <text x="200" y="280" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle" fill="#673AB7">Group Gift Shopping</text>
+</svg>
+
