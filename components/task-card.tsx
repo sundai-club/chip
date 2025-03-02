@@ -4,19 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-
-interface Task {
-  id: number
-  title: string
-  description: string
-  dueDate: string
-  pledgeAmount: number
-  goalAmount: number
-  status: string
-  contributors: number
-  category: string
-  imageUrl?: string
-}
+import type { Task } from "@/lib/types"
 
 interface TaskCardProps {
   task: Task
@@ -25,6 +13,8 @@ interface TaskCardProps {
 export function TaskCard({ task }: TaskCardProps) {
   const daysLeft = getDaysLeft(task.dueDate)
   const progressPercentage = (task.pledgeAmount / task.goalAmount) * 100
+
+  console.log("Rendering TaskCard:", task)
 
   return (
     <Link href={`/tasks/${task.id}`}>
