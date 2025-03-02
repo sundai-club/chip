@@ -1,4 +1,4 @@
-Chip features a bounty board for users to post, pledge on and accept bounties for community-driven tasks (think parties, getaways, and more!). Think Fiver, but with friends :)
+Chip features a bounty board for users to post, pledge on and accept bounties for community-driven tasks (think parties, getaways, and more!). Splitwise, but for planning.
 
 ## Installation Instructions
 1. Clone the repository:
