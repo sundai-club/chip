@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -32,6 +32,7 @@ import {
 	ChevronRight,
 	ImageIcon,
 	X,
+	Search,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -40,8 +41,13 @@ import Image from 'next/image';
 export default function CreateTaskPage() {
 	const [step, setStep] = useState(1);
 	const [date, setDate] = useState<Date>();
-	const [imageUrl, setImageUrl] = useState<string>('');
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [selectedGif, setSelectedGif] = useState<string>('');
+	const [searchQuery, setSearchQuery] = useState('');
+	const [giphyResults, setGiphyResults] = useState<
+		Array<{ id: string; url: string }>
+	>([]);
+	const [isSearching, setIsSearching] = useState(false);
+	const [taskTitle, setTaskTitle] = useState('');
 
 	const nextStep = () => {
 		if (step < 5) setStep(step + 1);
@@ -51,20 +57,84 @@ export default function CreateTaskPage() {
 		if (step > 1) setStep(step - 1);
 	};
 
-	const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const file = event.target.files?.[0];
-		if (file) {
-			const url = URL.createObjectURL(file);
-			setImageUrl(url);
+	const searchGiphy = async (query: string) => {
+		if (!query) return;
+		setIsSearching(true);
+
+		try {
+			const response = await fetch(
+				`/api/giphy?q=${encodeURIComponent(query)}`
+			);
+			const data = await response.json();
+
+			if (data.data && Array.isArray(data.data)) {
+				const results = data.data.map((gif: any) => ({
+					id: gif.id,
+					url: gif.images.fixed_height.url,
+				}));
+
+				setGiphyResults(results);
+			} else {
+				setGiphyResults([]);
+			}
+		} catch (error) {
+			console.error('Error searching Giphy:', error);
+			setGiphyResults([]);
+		} finally {
+			setIsSearching(false);
 		}
 	};
 
-	const removeImage = () => {
-		setImageUrl('');
-		if (fileInputRef.current) {
-			fileInputRef.current.value = '';
+	const removeGif = () => {
+		setSelectedGif('');
+		setGiphyResults([]);
+		setSearchQuery('');
+	};
+
+	const fetchDefaultGifs = async () => {
+		if (giphyResults.length === 0 && !isSearching) {
+			setIsSearching(true);
+			try {
+				const searchTerm = 'organizer';
+
+				const response = await fetch(
+					`/api/giphy?q=${encodeURIComponent(searchTerm)}`
+				);
+				const data = await response.json();
+
+				if (data.data && Array.isArray(data.data)) {
+					const results = data.data.map((gif: any) => ({
+						id: gif.id,
+						url: gif.images.fixed_height.url,
+					}));
+
+					setGiphyResults(results);
+				}
+			} catch (error) {
+				console.error('Error fetching default GIFs:', error);
+			} finally {
+				setIsSearching(false);
+			}
 		}
 	};
+
+	useEffect(() => {
+		if (step === 1 && !selectedGif) {
+			fetchDefaultGifs();
+		}
+	}, [step]);
+
+	useEffect(() => {
+		if (giphyResults.length > 0 && typeof window !== 'undefined') {
+			// Try to load the image directly - only in browser
+			try {
+				const img = new Image();
+				img.src = giphyResults[0].url;
+			} catch (error) {
+				console.error('Error creating image:', error);
+			}
+		}
+	}, [giphyResults]);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-500 to-pink-500">
@@ -118,6 +188,10 @@ export default function CreateTaskPage() {
 										<Input
 											id="title"
 											placeholder="Enter a clear, descriptive title"
+											value={taskTitle}
+											onChange={(e) =>
+												setTaskTitle(e.target.value)
+											}
 										/>
 									</div>
 									<div className="space-y-2">
@@ -161,60 +235,110 @@ export default function CreateTaskPage() {
 										</Select>
 									</div>
 									<div className="space-y-2">
-										<Label>Task Image</Label>
+										<Label>Task GIF</Label>
 										<div className="flex flex-col gap-4">
-											{imageUrl ? (
+											{selectedGif ? (
 												<div className="relative">
 													<Image
-														src={
-															imageUrl ||
-															'/placeholder.svg'
-														}
-														alt="Task preview"
+														src={selectedGif}
+														alt="Task GIF"
 														width={400}
 														height={300}
 														className="w-full h-[200px] object-cover rounded-lg"
+														onError={() =>
+															console.error(
+																'Error loading selected GIF'
+															)
+														}
 													/>
 													<Button
 														variant="destructive"
 														size="icon"
 														className="absolute top-2 right-2"
-														onClick={removeImage}
+														onClick={removeGif}
 													>
 														<X className="h-4 w-4" />
 													</Button>
 												</div>
 											) : (
-												<div className="flex items-center justify-center w-full">
-													<label
-														htmlFor="image-upload"
-														className="flex flex-col items-center justify-center w-full h-[200px] border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
-													>
-														<div className="flex flex-col items-center justify-center pt-5 pb-6">
-															<ImageIcon className="w-8 h-8 mb-4 text-gray-500" />
-															<p className="mb-2 text-sm text-gray-500">
-																<span className="font-semibold">
-																	Click to
-																	upload
-																</span>{' '}
-																or drag and drop
-															</p>
-															<p className="text-xs text-gray-500">
-																PNG, JPG or GIF
-																(MAX. 800x400px)
-															</p>
-														</div>
-														<input
-															id="image-upload"
-															ref={fileInputRef}
-															type="file"
-															className="hidden"
-															accept="image/*"
-															onChange={
-																handleImageUpload
+												<div className="space-y-4">
+													<div className="flex gap-2">
+														<Input
+															placeholder="Search for a GIF..."
+															value={searchQuery}
+															onChange={(e) =>
+																setSearchQuery(
+																	e.target
+																		.value
+																)
 															}
+															onKeyDown={(e) => {
+																if (
+																	e.key ===
+																	'Enter'
+																) {
+																	e.preventDefault();
+																	searchGiphy(
+																		searchQuery
+																	);
+																}
+															}}
 														/>
-													</label>
+														<Button
+															onClick={() =>
+																searchGiphy(
+																	searchQuery
+																)
+															}
+															disabled={
+																isSearching
+															}
+														>
+															<Search className="h-4 w-4" />
+														</Button>
+													</div>
+													{isSearching ? (
+														<div className="text-center py-4">
+															Searching...
+														</div>
+													) : giphyResults.length >
+													  0 ? (
+														<div className="grid grid-cols-3 gap-2">
+															{giphyResults.map(
+																(gif) => (
+																	<div
+																		key={
+																			gif.id
+																		}
+																		className="cursor-pointer hover:opacity-80 border border-gray-200 rounded-lg overflow-hidden"
+																		onClick={() => {
+																			console.log(
+																				'Selecting GIF:',
+																				gif.url
+																			);
+																			setSelectedGif(
+																				gif.url
+																			);
+																		}}
+																	>
+																		<img
+																			src={
+																				gif.url
+																			}
+																			alt="GIF search result"
+																			className="w-full h-[100px] object-cover rounded-lg"
+																		/>
+																	</div>
+																)
+															)}
+														</div>
+													) : (
+														<div className="text-center py-4 text-gray-500">
+															{searchQuery
+																? 'No results found'
+																: 'Loading suggested GIFs...'}
+														</div>
+													)}
 												</div>
 											)}
 										</div>
@@ -387,17 +511,19 @@ export default function CreateTaskPage() {
 										Review and Submit
 									</h2>
 									<div className="space-y-4">
-										{imageUrl && (
+										{selectedGif && (
 											<div className="w-full">
 												<Image
-													src={
-														imageUrl ||
-														'/placeholder.svg'
-													}
-													alt="Task preview"
+													src={selectedGif}
+													alt="Task GIF"
 													width={400}
 													height={300}
 													className="w-full h-[200px] object-cover rounded-lg"
+													onError={() =>
+														console.error(
+															'Error loading selected GIF'
+														)
+													}
 												/>
 											</div>
 										)}
