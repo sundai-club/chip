@@ -8,6 +8,7 @@ import { Plus, Search } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import type { Task, FilterTab, SortOption, TaskCategory } from "@/lib/types"
+import { Logo } from "@/components/logo"
 
 // Mock data
 const mockTasks: Task[] = [
@@ -156,7 +157,7 @@ export default function Dashboard() {
       <header className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b">
         <div className="container flex items-center justify-between h-16 px-4 mx-auto">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#3D1766]">TaskShare</h1>
+            <Logo />
           </div>
           <div className="flex items-center gap-4">
             <Link href="/create">

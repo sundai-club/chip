@@ -31,7 +31,7 @@ export default function CreateTaskPage() {
         <div className="container flex items-center justify-between h-16 px-4 mx-auto">
           <div className="flex items-center gap-2">
             <Link href="/">
-              <h1 className="text-xl font-bold text-[#3D1766]">TaskShare</h1>
+              <Logo />
             </Link>
           </div>
           <div className="flex items-center gap-4">

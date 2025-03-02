@@ -6,7 +6,7 @@ import { Inter } from "next/font/google"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "TaskShare - Community Task Sharing Platform",
+  title: "Chip - Community Task Sharing Platform",
   description: "Share tasks, pool resources, and get things done together",
     generator: 'v0.dev'
 }

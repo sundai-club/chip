@@ -3,6 +3,7 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Calendar, CheckCircle, Clock, DollarSign, Share2, Users } from "lucide-react"
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
   // In a real app, we would fetch the task data based on the ID
@@ -16,7 +17,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         <div className="container flex items-center justify-between h-16 px-4 mx-auto">
           <div className="flex items-center gap-2">
             <Link href="/">
-              <h1 className="text-xl font-bold text-[#3D1766]">TaskShare</h1>
+              <Logo />
             </Link>
           </div>
           <div className="flex items-center gap-4">
