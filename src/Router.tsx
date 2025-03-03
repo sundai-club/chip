@@ -33,7 +33,8 @@ import CreateTaskPage from './pages/CreateTask';
 import TaskDetailPage from './pages/TaskDetail';
 
 function createRouter(config: any) {
-    return createBrowserRouter([
+    console.log('Creating router with config:', config);
+    const router = createBrowserRouter([
         {
             path: '/',
             element: (
@@ -41,6 +42,7 @@ function createRouter(config: any) {
                     <Outlet />
                 </AuthChangeRedirector>
             ),
+            errorElement: <div>Something went wrong!</div>,
             children: [
                 {
                     path: '/',
@@ -192,19 +194,39 @@ function createRouter(config: any) {
                             <TaskDetailPage />
                         </AuthenticatedRoute>
                     ),
+                    errorElement: <div>Error loading task!</div>,
                 },
             ],
         },
     ]);
+    console.log('Router created successfully');
+    return router;
 }
 
 export default function Router() {
-    const [router, setRouter] = useState<ReturnType<
-        typeof createBrowserRouter
-    > | null>(null);
+    const [router, setRouter] = useState<ReturnType<typeof createBrowserRouter> | null>(null);
     const config = useConfig();
+
     useEffect(() => {
-        setRouter(createRouter(config));
+        console.log('Router effect running, config:', config);
+        if (!config) {
+            console.log('No config available yet');
+            return;
+        }
+        try {
+            const newRouter = createRouter(config);
+            console.log('Setting new router');
+            setRouter(newRouter);
+        } catch (error) {
+            console.error('Error creating router:', error);
+        }
     }, [config]);
-    return router ? <RouterProvider router={router} /> : null;
+
+    if (!router) {
+        console.log('Router not initialized yet');
+        return <div>Loading...</div>;
+    }
+
+    console.log('Rendering RouterProvider');
+    return <RouterProvider router={router} />;
 }

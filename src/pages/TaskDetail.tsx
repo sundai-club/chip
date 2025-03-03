@@ -1,94 +1,195 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Button, Card, ProgressBar, Image, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Button, Card, ProgressBar, Image, Badge, Alert } from 'react-bootstrap';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Calendar, CheckCircle, Clock, DollarSign, Share2, Users } from 'lucide-react';
 import Header from '../shared/components/Header';
 import { apiClient } from '../shared/services/api';
+import * as dateUtils from '../utils/date';
 
-// Types from your existing Task interface
 interface Task {
     id: number;
     title: string;
     description: string;
-    dueDate: string;
-    pledgeAmount: number;
-    goalAmount: number;
-    status: 'New' | 'Pledged' | 'Accepted' | 'Completed' | 'Closed';
-    contributors: number;
+    due_date: string;
+    goal: number;
+    status: string;
     category: string;
-    imageUrl: string;
+    image_url: string;
+    statistics: {
+        total_pledged: number;
+        contributor_count: number;
+        days_remaining: number;
+        completion_percentage: number;
+    };
 }
 
-interface Contributor {
+interface Contribution {
     id: number;
-    name: string;
-    initials: string;
+    user: {
+        id: number;
+        email: string;
+    };
+    user_name: string;
     amount: number;
+    created_at: string;
+    comment: string;
 }
 
 const TaskDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [task, setTask] = useState<Task | null>(null);
+    const [contributions, setContributions] = useState<Contribution[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         const loadTask = async () => {
+            if (!id) {
+                setError('No task ID provided');
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            setError(null);
+
             try {
-                const taskData = await apiClient.get(`/api/chip/tasks/${id}/`);
-                setTask(taskData);
+                console.log('Fetching task with ID:', id);
+                const response = await apiClient.get(`/api/chip/tasks/${id}/`);
+                console.log('Task response:', response);
+                setTask(response);
+                
+                // Load contributions
+                const contributionsResponse = await apiClient.get(`/api/chip/tasks/${id}/contributions/`);
+                console.log('Contributions response:', contributionsResponse);
+                setContributions(contributionsResponse);
             } catch (error) {
                 console.error('Error loading task:', error);
-                navigate('/');
+                setError('Failed to load task details. Please try again.');
+                // Don't navigate away automatically, let the user see the error
+            } finally {
+                setLoading(false);
             }
         };
 
         loadTask();
     }, [id, navigate]);
 
+    // Show loading state
+    if (loading) {
+        return (
+            <div className="min-vh-100 bg-light">
+                <Header first_name="" last_name="" email="" balance={0} projectId="" />
+                <Container className="py-4">
+                    <div className="text-center">
+                        <div className="spinner-border" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                        </div>
+                        <p className="mt-2">Loading task details...</p>
+                    </div>
+                </Container>
+            </div>
+        );
+    }
+
+    // Show error state
+    if (error) {
+        return (
+            <div className="min-vh-100 bg-light">
+                <Header first_name="" last_name="" email="" balance={0} projectId="" />
+                <Container className="py-4">
+                    <Alert variant="danger">
+                        <Alert.Heading>Error</Alert.Heading>
+                        <p>{error}</p>
+                        <div className="d-flex justify-content-end">
+                            <Button variant="outline-danger" onClick={() => navigate('/')}>
+                                Return to Home
+                            </Button>
+                        </div>
+                    </Alert>
+                </Container>
+            </div>
+        );
+    }
+
+    // Show not found state
+    if (!task) {
+        return (
+            <div className="min-vh-100 bg-light">
+                <Header first_name="" last_name="" email="" balance={0} projectId="" />
+                <Container className="py-4">
+                    <Alert variant="warning">
+                        <Alert.Heading>Task Not Found</Alert.Heading>
+                        <p>The task you're looking for doesn't exist or has been removed.</p>
+                        <div className="d-flex justify-content-end">
+                            <Button variant="outline-warning" onClick={() => navigate('/')}>
+                                Return to Home
+                            </Button>
+                        </div>
+                    </Alert>
+                </Container>
+            </div>
+        );
+    }
+
     const handlePledge = async (amount: number) => {
         try {
             await apiClient.post(`/api/chip/tasks/${id}/contribute/`, { amount });
-            const updatedTask = await apiClient.get(`/api/chip/tasks/${id}/`);
-            setTask(updatedTask);
+            // Refresh task and contributions data
+            const [taskResponse, contributionsResponse] = await Promise.all([
+                apiClient.get(`/api/chip/tasks/${id}/`),
+                apiClient.get(`/api/chip/tasks/${id}/contributions/`)
+            ]);
+            setTask(taskResponse);
+            setContributions(contributionsResponse);
         } catch (error) {
             console.error('Error pledging:', error);
+            setError('Failed to make pledge. Please try again.');
         }
     };
 
     const handleAcceptTask = async () => {
         try {
             await apiClient.post(`/api/chip/tasks/${id}/update_status/`, {
-                status: 'accepted'
+                status: 'Accepted'
             });
-            const response = await apiClient.get(`/api/chip/tasks/${id}/`);
-            setTask(response.data);
+            const task = await apiClient.get(`/api/chip/tasks/${id}/`);
+            setTask(task);
         } catch (error) {
             console.error('Error accepting task:', error);
+            setError('Failed to accept task. Please try again.');
         }
     };
 
     const handleShare = async () => {
         try {
-            const shareResult = await apiClient.post(`/api/chip/tasks/${id}/share/`, {
+            const response = await apiClient.post(`/api/chip/tasks/${id}/share/`, {
                 platform: 'web',
                 message: 'Check out this task!'
             });
-            window.open(shareResult.share_url, '_blank');
+            if (response.share_url) {
+                window.open(response.share_url, '_blank');
+            }
         } catch (error) {
             console.error('Error sharing task:', error);
+            setError('Failed to share task. Please try again.');
         }
     };
 
     if (!task) return null;
-
-    const progressPercentage = (task.pledgeAmount / task.goalAmount) * 100;
-    const daysLeft = getDaysLeft(task.dueDate);
 
     return (
         <div className="min-vh-100 bg-light">
             <Header first_name="" last_name="" email="" balance={0} projectId="" />
             
             <Container className="py-4">
+                {error && (
+                    <Alert variant="danger" dismissible onClose={() => setError(null)}>
+                        {error}
+                    </Alert>
+                )}
+
                 <div className="mb-4">
                     <Link to="/" className="text-decoration-none text-primary">
                         ← Back to tasks
@@ -105,8 +206,8 @@ const TaskDetailPage: React.FC = () => {
                             
                             <div className="mt-4 mb-3">
                                 <Image
-                                    src={task.imageUrl || `/animations/animation-${id}.svg`}
-                                    alt={`${task.title} illustration`}
+                                    src={task.image_url}
+                                    alt={task.title}
                                     className="w-100 rounded"
                                     style={{ maxHeight: '300px', objectFit: 'cover' }}
                                 />
@@ -115,15 +216,21 @@ const TaskDetailPage: React.FC = () => {
                             <div className="d-flex flex-wrap gap-4 mt-3">
                                 <div className="d-flex align-items-center gap-2 text-muted">
                                     <Calendar size={16} />
-                                    <span>Due: {formatDate(task.dueDate)}</span>
+                                    <span>Due: {dateUtils.formatDate(task.due_date)}</span>
                                 </div>
                                 <div className="d-flex align-items-center gap-2 text-muted">
                                     <Clock size={16} />
-                                    <span>{daysLeft > 0 ? `${daysLeft} days left` : "Due today"}</span>
+                                    <span>
+                                        {task.statistics.days_remaining > 0 
+                                            ? `${task.statistics.days_remaining} days left` 
+                                            : task.statistics.days_remaining === 0 
+                                                ? "Due today"
+                                                : "Past due"}
+                                    </span>
                                 </div>
                                 <div className="d-flex align-items-center gap-2 text-muted">
                                     <Users size={16} />
-                                    <span>{task.contributors} contributors</span>
+                                    <span>{task.statistics.contributor_count} contributors</span>
                                 </div>
                             </div>
                         </div>
@@ -144,55 +251,66 @@ const TaskDetailPage: React.FC = () => {
                                     <div className="d-flex justify-content-between align-items-center mb-2">
                                         <span className="text-muted">Current pledges</span>
                                         <span className="h4 mb-0">
-                                            ${task.pledgeAmount} of ${task.goalAmount}
+                                            ${task.statistics.total_pledged} of ${task.goal}
                                         </span>
                                     </div>
                                     <ProgressBar 
-                                        now={progressPercentage} 
+                                        now={task.statistics.completion_percentage} 
                                         className="mb-3"
                                         style={{ height: '0.75rem' }}
                                     />
                                     <div className="d-flex justify-content-between">
-                                        <small className="text-muted">{task.contributors} contributors</small>
-                                        <small className="text-muted">{progressPercentage.toFixed(0)}% of goal</small>
+                                        <small className="text-muted">{task.statistics.contributor_count} contributors</small>
+                                        <small className="text-muted">{task.statistics.completion_percentage.toFixed(0)}% of goal</small>
                                     </div>
                                 </Card.Body>
                             </Card>
                         </div>
 
-                        <hr />
-
-                        <div className="mb-4">
-                            <h2 className="h4 mb-3">Contributors</h2>
-                            {mockContributors.map((contributor) => (
-                                <Card key={contributor.id} className="mb-2">
-                                    <Card.Body className="d-flex justify-content-between align-items-center py-2">
-                                        <div className="d-flex align-items-center gap-3">
-                                            <div 
-                                                className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
-                                                style={{ width: '32px', height: '32px' }}
-                                            >
-                                                {contributor.initials}
-                                            </div>
-                                            <span>{contributor.name}</span>
-                                        </div>
-                                        <span className="fw-bold">${contributor.amount}</span>
-                                    </Card.Body>
-                                </Card>
-                            ))}
-                        </div>
+                        {contributions.length > 0 && (
+                            <>
+                                <hr />
+                                <div className="mb-4">
+                                    <h2 className="h4 mb-3">Contributors</h2>
+                                    {contributions.map((contribution) => (
+                                        <Card key={contribution.id} className="mb-2">
+                                            <Card.Body className="d-flex justify-content-between align-items-center py-2">
+                                                <div className="d-flex align-items-center gap-3">
+                                                    <div 
+                                                        className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                                                        style={{ width: '32px', height: '32px' }}
+                                                    >
+                                                        {contribution.user_name.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <span>{contribution.user_name}</span>
+                                                </div>
+                                                <span className="fw-bold">${contribution.amount}</span>
+                                            </Card.Body>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </>
+                        )}
 
                         <Row className="g-3">
                             {(task.status === "New" || task.status === "Pledged") ? (
                                 <>
                                     <Col sm={6}>
-                                        <Button variant="primary" className="w-100 d-flex align-items-center justify-content-center gap-2">
+                                        <Button 
+                                            variant="primary" 
+                                            className="w-100 d-flex align-items-center justify-content-center gap-2"
+                                            onClick={() => handlePledge(10)} // You might want to add a modal for amount input
+                                        >
                                             <DollarSign size={16} />
                                             Pledge Money
                                         </Button>
                                     </Col>
                                     <Col sm={6}>
-                                        <Button variant="outline-primary" className="w-100 d-flex align-items-center justify-content-center gap-2">
+                                        <Button 
+                                            variant="outline-primary" 
+                                            className="w-100 d-flex align-items-center justify-content-center gap-2"
+                                            onClick={handleAcceptTask}
+                                        >
                                             <CheckCircle size={16} />
                                             Accept Task
                                         </Button>
@@ -206,7 +324,11 @@ const TaskDetailPage: React.FC = () => {
                                         </Button>
                                     </Col>
                                     <Col sm={6}>
-                                        <Button variant="outline-primary" className="w-100 d-flex align-items-center justify-content-center gap-2">
+                                        <Button 
+                                            variant="outline-primary" 
+                                            className="w-100 d-flex align-items-center justify-content-center gap-2"
+                                            onClick={handleShare}
+                                        >
                                             <Share2 size={16} />
                                             Share
                                         </Button>
@@ -214,7 +336,11 @@ const TaskDetailPage: React.FC = () => {
                                 </>
                             ) : (
                                 <Col xs={12}>
-                                    <Button variant="outline-primary" className="w-100 d-flex align-items-center justify-content-center gap-2">
+                                    <Button 
+                                        variant="outline-primary" 
+                                        className="w-100 d-flex align-items-center justify-content-center gap-2"
+                                        onClick={handleShare}
+                                    >
                                         <Share2 size={16} />
                                         Share
                                     </Button>
@@ -241,46 +367,18 @@ function StatusBadge({ status }: { status: string }) {
     };
 
     return (
-        <Badge bg={getVariant()} className="px-3 py-2">
+        <Badge 
+            bg={getVariant()} 
+            style={status === "New" ? {
+                backgroundColor: '#e7f1ff',
+                color: '#0d6efd',
+                border: '1px solid #0d6efd',
+                fontWeight: 'bold'
+            } : undefined}
+        >
             {status}
         </Badge>
     );
 }
-
-function getDaysLeft(dueDate: string): number {
-    const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-}
-
-function formatDate(dateString: string): string {
-    const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
-    return new Date(dateString).toLocaleDateString("en-US", options);
-}
-
-// Mock data
-const mockTasks: Task[] = [
-    {
-        id: 1,
-        title: "Organize Birthday Party",
-        description: "Need help planning a surprise birthday party for 20 people. This includes decorations, cake ordering, and coordinating with the venue. The party is for my best friend who is turning 30, and I want to make it special. We already have a venue booked, but need someone to take charge of the overall planning and execution.",
-        dueDate: "2023-12-15",
-        pledgeAmount: 120,
-        goalAmount: 200,
-        status: "New",
-        contributors: 3,
-        category: "Event",
-        imageUrl: "/images/birthday-party.jpg",
-    },
-    // ... other mock tasks
-];
-
-const mockContributors: Contributor[] = [
-    { id: 1, name: "Alex Johnson", initials: "AJ", amount: 50 },
-    { id: 2, name: "Maria Garcia", initials: "MG", amount: 40 },
-    { id: 3, name: "Sam Taylor", initials: "ST", amount: 30 },
-];
 
 export default TaskDetailPage; 

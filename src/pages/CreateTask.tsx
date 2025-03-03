@@ -30,6 +30,7 @@ const CreateTaskPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [giphyResults, setGiphyResults] = useState<GiphyResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
     const navigate = useNavigate();
 
     const [task, setTask] = useState<Task>({
@@ -62,7 +63,8 @@ const CreateTaskPage: React.FC = () => {
                 due_date: task.dueDate?.toISOString(),
                 estimated_time: task.estimatedTime,
                 suggested_pledge: task.suggestedPledge,
-                image_url: selectedGif
+                image_url: selectedGif,
+                privacy: task.privacy
             };
 
             const response = await apiClient.post('/api/chip/tasks/', taskData);
@@ -83,13 +85,20 @@ const CreateTaskPage: React.FC = () => {
             return;
         }
         setIsSearching(true);
+        setHasSearched(true);
 
         try {
-            const response = await apiClient.get<GiphyResult[]>('/api/chip/gifs/', {
+            const gifs = await apiClient.get<GiphyResult[]>('/api/chip/gifs/', {
                 params: { q: query }
             });
-            // Response data is already parsed JSON, contains Array<{ id: string; url: string }>
-            setGiphyResults(response.data || []);
+            // Debug response
+            console.log('GIF API Response:', gifs);
+            
+            // Ensure we have an array of GiphyResults
+            const results = Array.isArray(gifs) ? gifs : [];
+            console.log('Processed results:', results);
+            
+            setGiphyResults(results);
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 console.error('Error searching GIFs:', error.response?.data);
@@ -187,35 +196,42 @@ const CreateTaskPage: React.FC = () => {
                                     Searching for GIFs...
                                 </div>
                             )}
+                            {/* Debug info */}
+                            <div className="d-none">
+                                Debug: {JSON.stringify({ resultsLength: giphyResults.length, hasResults: giphyResults.length > 0 })}
+                            </div>
                             {giphyResults.length > 0 && (
                                 <div className="gif-results mt-3">
                                     <Row xs={2} md={3} className="g-2">
-                                        {giphyResults.map((gif) => (
-                                            <Col key={gif.id}>
-                                                <div 
-                                                    className="position-relative" 
-                                                    style={{ cursor: 'pointer' }}
-                                                    onClick={() => setSelectedGif(gif.url)}
-                                                >
-                                                    <Image
-                                                        src={gif.url}
-                                                        alt="GIF option"
-                                                        fluid
-                                                        className="rounded hover-shadow"
-                                                        style={{
-                                                            height: '120px',
-                                                            objectFit: 'cover',
-                                                            width: '100%',
-                                                            transition: 'transform 0.2s',
-                                                        }}
-                                                    />
-                                                </div>
-                                            </Col>
-                                        ))}
+                                        {giphyResults.map((gif) => {
+                                            console.log('Rendering GIF:', gif);
+                                            return (
+                                                <Col key={gif.id}>
+                                                    <div 
+                                                        className="position-relative" 
+                                                        style={{ cursor: 'pointer' }}
+                                                        onClick={() => setSelectedGif(gif.url)}
+                                                    >
+                                                        <Image
+                                                            src={gif.url}
+                                                            alt="GIF option"
+                                                            fluid
+                                                            className="rounded hover-shadow"
+                                                            style={{
+                                                                height: '120px',
+                                                                objectFit: 'cover',
+                                                                width: '100%',
+                                                                transition: 'transform 0.2s',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </Col>
+                                            );
+                                        })}
                                     </Row>
                                 </div>
                             )}
-                            {searchQuery && giphyResults.length === 0 && !isSearching && (
+                            {hasSearched && searchQuery && giphyResults.length === 0 && !isSearching && (
                                 <div className="text-center text-muted my-3">
                                     No GIFs found. Try a different search term.
                                 </div>

@@ -4,6 +4,10 @@ globs: *.tsx
 ---
 Example usage:
 
-const tasks = await apiClient.get('/api/chip/tasks/')
+const gifs = await apiClient.get<GiphyResult[]>('/api/chip/gifs/', {
+                params: { q: query }
+            });
+console.log('GIFs list:', gifs);
+console.log('5th gif:', gifs[5]);
 
 Notice how it does NOT return a `response`. It returns the parsed json.  Do NOT try to access `.data` on what is returned, as it is already parsed.

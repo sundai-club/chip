@@ -99,7 +99,7 @@ const HomePage = () => {
                 });
                 console.log('API Response:', tasks);
                 console.time('setTasksState');
-                setTasks(tasks?.data || []);
+                setTasks(tasks || []);
                 console.timeEnd('setTasksState');
             } catch (error) {
                 console.error('Error loading tasks:', error);
@@ -184,9 +184,9 @@ const HomePage = () => {
         const loadUser = async () => {
             console.time('loadUser');
             try {
-                const userData = await apiClient.get('/api/chip/users/me/');
+                const userData = await apiClient.get('/api/users/me/');
                 console.log('User data response:', userData);
-                setUser(userData?.data || {
+                setUser(userData || {
                     first_name: '',
                     last_name: '',
                     email: '',
