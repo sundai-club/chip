@@ -11,20 +11,45 @@ export async function GET(request: Request) {
 		);
 	}
 
-	try {
-		const apiKey = process.env.GIPHY_API_KEY;
+	const apiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
 
-		const response = await fetch(
-			`https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${query}&limit=9&rating=g`,
-			{
-				headers: {
-					Accept: 'application/json',
-				},
-				cache: 'no-store',
-			}
+	if (!apiKey) {
+		console.error('GIPHY API key is missing');
+		return NextResponse.json(
+			{ error: 'Server configuration error' },
+			{ status: 500 }
+		);
+	}
+
+	try {
+		console.log(
+			`Searching Giphy for: "${query}" with API key: ${apiKey.substring(
+				0,
+				5
+			)}...`
 		);
 
+		const response = await fetch(
+			`https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(
+				query
+			)}&limit=9&rating=g`
+		);
+
+		if (!response.ok) {
+			console.error(
+				`Giphy API error: ${response.status} ${response.statusText}`
+			);
+			const errorText = await response.text();
+			console.error(`Error details: ${errorText}`);
+			return NextResponse.json(
+				{ error: 'Failed to fetch from Giphy API' },
+				{ status: response.status }
+			);
+		}
+
 		const data = await response.json();
+		console.log(`Giphy returned ${data.data?.length || 0} results`);
+
 		return NextResponse.json(data);
 	} catch (error) {
 		console.error('Error fetching from Giphy:', error);

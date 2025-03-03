@@ -1,0 +1,9 @@
+{
+	"name": "seed-script",
+	"version": "1.0.0",
+	"type": "module",
+	"dependencies": {
+		"@supabase/supabase-js": "latest",
+		"dotenv": "latest"
+	}
+}

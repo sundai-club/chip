@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import type { Task } from '@/lib/types';
+import Image from 'next/image';
 
 interface TaskCardProps {
 	task: Task;
@@ -38,15 +39,19 @@ export function TaskCard({ task }: TaskCardProps) {
 					</div>
 				</CardHeader>
 				<div className="w-full h-40 overflow-hidden">
-					<img
-						src={
-							task.imageUrl ||
-							task.gifUrl ||
-							`/animations/animation-${task.id}.svg`
-						}
-						alt={`${task.title} illustration`}
-						className="w-full h-full object-cover"
-					/>
+					{task.imageUrl && (
+						<Image
+							src={task.imageUrl}
+							alt={task.title}
+							fill
+							className="w-full h-full object-cover"
+							onError={(e) => {
+								// Fallback for broken images
+								(e.target as HTMLImageElement).src =
+									'/animations/animation-1.svg';
+							}}
+						/>
+					)}
 				</div>
 				<CardContent className="p-4">
 					<p className="mb-4 text-sm text-gray-600 line-clamp-2">

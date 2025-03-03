@@ -37,6 +37,9 @@ import {
 import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase-client';
 
 export default function CreateTaskPage() {
 	const [step, setStep] = useState(1);
@@ -48,6 +51,14 @@ export default function CreateTaskPage() {
 	>([]);
 	const [isSearching, setIsSearching] = useState(false);
 	const [taskTitle, setTaskTitle] = useState('');
+	const [taskDescription, setTaskDescription] = useState('');
+	const [taskCategory, setTaskCategory] = useState('event');
+	const [taskGoalAmount, setTaskGoalAmount] = useState('');
+	const [taskSuggestedPledge, setTaskSuggestedPledge] = useState('');
+	const [taskPrivacy, setTaskPrivacy] = useState('friends');
+
+	const { user } = useAuth();
+	const router = useRouter();
 
 	const nextStep = () => {
 		if (step < 5) setStep(step + 1);
@@ -58,27 +69,34 @@ export default function CreateTaskPage() {
 	};
 
 	const searchGiphy = async (query: string) => {
-		if (!query) return;
 		setIsSearching(true);
-
 		try {
+			console.log(`Searching for: ${query}`);
 			const response = await fetch(
 				`/api/giphy?q=${encodeURIComponent(query)}`
 			);
+
+			if (!response.ok) {
+				throw new Error(`Error: ${response.status}`);
+			}
+
 			const data = await response.json();
+			console.log('Giphy search results:', data);
 
-			if (data.data && Array.isArray(data.data)) {
-				const results = data.data.map((gif: any) => ({
-					id: gif.id,
-					url: gif.images.fixed_height.url,
-				}));
-
-				setGiphyResults(results);
-			} else {
+			if (!data.data || !Array.isArray(data.data)) {
+				console.error('Unexpected response format:', data);
 				setGiphyResults([]);
+			} else {
+				setGiphyResults(
+					data.data.map((gif: any) => ({
+						id: gif.id,
+						url: gif.images.fixed_height.url,
+						title: gif.title,
+					}))
+				);
 			}
 		} catch (error) {
-			console.error('Error searching Giphy:', error);
+			console.error('Error searching gifs:', error);
 			setGiphyResults([]);
 		} finally {
 			setIsSearching(false);
@@ -128,13 +146,62 @@ export default function CreateTaskPage() {
 		if (giphyResults.length > 0 && typeof window !== 'undefined') {
 			// Try to load the image directly - only in browser
 			try {
-				const img = new Image();
+				const img = new (window.Image as any)();
 				img.src = giphyResults[0].url;
 			} catch (error) {
 				console.error('Error creating image:', error);
 			}
 		}
 	}, [giphyResults]);
+
+	const submitTask = async () => {
+		if (!user) {
+			console.error('User not authenticated');
+			return;
+		}
+
+		try {
+			// Add logging to debug
+			console.log('Creating task with data:', {
+				title: taskTitle,
+				description: taskDescription,
+				due_date: date ? date.toISOString().split('T')[0] : null,
+				category: taskCategory,
+				goal_amount: parseFloat(taskGoalAmount),
+				pledge_amount: parseFloat(taskSuggestedPledge),
+				privacy: taskPrivacy,
+				image_url: selectedGif,
+				created_by: user.id,
+			});
+
+			const { data, error } = await supabase
+				.from('tasks')
+				.insert({
+					title: taskTitle,
+					description: taskDescription,
+					due_date: date ? date.toISOString().split('T')[0] : null,
+					category: taskCategory,
+					goal_amount: parseFloat(taskGoalAmount),
+					pledge_amount: parseFloat(taskSuggestedPledge),
+					privacy: taskPrivacy,
+					image_url: selectedGif,
+					created_by: user.id,
+				})
+				.select();
+
+			if (error) {
+				console.error('Supabase error:', error);
+				throw new Error('Failed to create task');
+			}
+
+			console.log('Task created successfully:', data);
+			router.push('/');
+		} catch (error) {
+			console.error('Error creating task:', error);
+			// Show error message to user
+			alert('Failed to create task. Please try again.');
+		}
+	};
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-500 to-pink-500">
@@ -202,13 +269,24 @@ export default function CreateTaskPage() {
 											id="description"
 											placeholder="Describe what needs to be done in detail"
 											rows={4}
+											value={taskDescription}
+											onChange={(e) =>
+												setTaskDescription(
+													e.target.value
+												)
+											}
 										/>
 									</div>
 									<div className="space-y-2">
 										<Label htmlFor="category">
 											Category
 										</Label>
-										<Select>
+										<Select
+											value={taskCategory}
+											onChange={(value) =>
+												setTaskCategory(value)
+											}
+										>
 											<SelectTrigger>
 												<SelectValue placeholder="Select a category" />
 											</SelectTrigger>
@@ -408,6 +486,12 @@ export default function CreateTaskPage() {
 											type="number"
 											min="1"
 											placeholder="e.g., 100"
+											value={taskGoalAmount}
+											onChange={(e) =>
+												setTaskGoalAmount(
+													e.target.value
+												)
+											}
 										/>
 									</div>
 									<div className="space-y-2">
@@ -420,6 +504,12 @@ export default function CreateTaskPage() {
 											type="number"
 											min="1"
 											placeholder="e.g., 20"
+											value={taskSuggestedPledge}
+											onChange={(e) =>
+												setTaskSuggestedPledge(
+													e.target.value
+												)
+											}
 										/>
 									</div>
 									<div className="p-4 bg-gray-50 rounded-lg">
@@ -447,6 +537,14 @@ export default function CreateTaskPage() {
 												name="privacy"
 												className="mt-1"
 												defaultChecked
+												onChange={(e) =>
+													setTaskPrivacy(
+														e.target.id.replace(
+															'privacy-',
+															''
+														)
+													)
+												}
 											/>
 											<div>
 												<Label
@@ -467,6 +565,14 @@ export default function CreateTaskPage() {
 												id="privacy-network"
 												name="privacy"
 												className="mt-1"
+												onChange={(e) =>
+													setTaskPrivacy(
+														e.target.id.replace(
+															'privacy-',
+															''
+														)
+													)
+												}
 											/>
 											<div>
 												<Label
@@ -487,6 +593,14 @@ export default function CreateTaskPage() {
 												id="privacy-public"
 												name="privacy"
 												className="mt-1"
+												onChange={(e) =>
+													setTaskPrivacy(
+														e.target.id.replace(
+															'privacy-',
+															''
+														)
+													)
+												}
 											/>
 											<div>
 												<Label
@@ -532,13 +646,13 @@ export default function CreateTaskPage() {
 												<span className="font-medium">
 													Title:
 												</span>{' '}
-												Organize Birthday Party
+												{taskTitle}
 											</div>
 											<div>
 												<span className="font-medium">
 													Category:
 												</span>{' '}
-												Event
+												{taskCategory}
 											</div>
 											<div>
 												<span className="font-medium">
@@ -552,31 +666,26 @@ export default function CreateTaskPage() {
 												<span className="font-medium">
 													Pledge Goal:
 												</span>{' '}
-												$200
+												${taskGoalAmount}
 											</div>
 											<div>
 												<span className="font-medium">
 													Suggested Pledge:
 												</span>{' '}
-												$40
+												${taskSuggestedPledge}
 											</div>
 											<div>
 												<span className="font-medium">
 													Privacy:
 												</span>{' '}
-												Friends Only
+												{taskPrivacy}
 											</div>
 											<div>
 												<span className="font-medium">
 													Description:
 												</span>
 												<p className="text-sm text-gray-600 mt-1">
-													Need help planning a
-													surprise birthday party for
-													20 people. This includes
-													decorations, cake ordering,
-													and coordinating with the
-													venue.
+													{taskDescription}
 												</p>
 											</div>
 										</div>
@@ -614,11 +723,12 @@ export default function CreateTaskPage() {
 									<ChevronRight className="w-4 h-4 ml-2" />
 								</Button>
 							) : (
-								<Link href="/">
-									<Button className="bg-[#7B2869] hover:bg-[#3D1766]">
-										Create Task
-									</Button>
-								</Link>
+								<Button
+									onClick={submitTask}
+									className="bg-[#7B2869] hover:bg-[#3D1766] w-full"
+								>
+									Create Task
+								</Button>
 							)}
 						</CardFooter>
 					</Card>
