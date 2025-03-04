@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
 	const [tasks, setTasks] = useState<Task[]>([]);
-	const [loading, setLoading] = useState(true);
+	const [isLoading, setIsLoading] = useState(true);
 	const [activeTab, setActiveTab] = useState<FilterTab>('all');
 	const [searchQuery, setSearchQuery] = useState('');
 	const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -23,20 +23,29 @@ export default function Dashboard() {
 	>('all');
 	const { user } = useAuth();
 	const router = useRouter();
+	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		async function fetchTasks() {
 			try {
+				console.log('Fetching tasks...');
 				const response = await fetch('/api/tasks');
+				console.log('Tasks response status:', response.status);
+
 				if (!response.ok) {
-					throw new Error('Failed to fetch tasks');
+					const errorData = await response.json();
+					console.error('Error fetching tasks:', errorData);
+					throw new Error(errorData.error || 'Failed to fetch tasks');
 				}
+
 				const data = await response.json();
+				console.log('Tasks fetched successfully:', data.length);
 				setTasks(data);
-			} catch (error) {
-				console.error('Error fetching tasks:', error);
+			} catch (err: any) {
+				console.error('Error in fetchTasks:', err);
+				setError(err.message || 'Failed to load tasks');
 			} finally {
-				setLoading(false);
+				setIsLoading(false);
 			}
 		}
 
@@ -164,11 +173,15 @@ export default function Dashboard() {
 						onCategoryChange={setSelectedCategory}
 					/>
 
-					{loading ? (
+					{isLoading ? (
 						<div className="text-center py-12">
 							<p className="text-white text-lg">
 								Loading tasks...
 							</p>
+						</div>
+					) : error ? (
+						<div className="text-center py-12">
+							<p className="text-white text-lg">{error}</p>
 						</div>
 					) : filteredTasks.length === 0 ? (
 						<div className="text-center py-12">

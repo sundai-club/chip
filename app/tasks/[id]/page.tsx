@@ -9,6 +9,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Task } from '@/lib/types';
+import { PledgeForm } from '@/components/pledge-form';
+import { PledgesList } from '@/components/pledges-list';
+import { TopContributors } from '@/components/top-contributors';
 
 export default function TaskDetailPage() {
 	const { id } = useParams();
@@ -17,22 +20,33 @@ export default function TaskDetailPage() {
 	const { user } = useAuth();
 	const router = useRouter();
 
-	useEffect(() => {
-		async function fetchTask() {
-			try {
-				const response = await fetch(`/api/tasks/${id}`);
-				if (!response.ok) {
-					throw new Error('Failed to fetch task');
-				}
-				const data = await response.json();
-				setTask(data);
-			} catch (error) {
-				console.error('Error fetching task:', error);
-			} finally {
-				setLoading(false);
-			}
-		}
+	const fetchTask = async () => {
+		setLoading(true);
+		try {
+			console.log(`Fetching task with ID: ${id}`);
+			const response = await fetch(`/api/tasks/${id}`);
 
+			if (!response.ok) {
+				const errorData = await response.json();
+				console.error('Error response:', errorData);
+				throw new Error(
+					`Failed to fetch task: ${
+						errorData.error || response.statusText
+					}`
+				);
+			}
+
+			const data = await response.json();
+			console.log('Task data received:', data);
+			setTask(data);
+		} catch (error) {
+			console.error('Error fetching task:', error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	useEffect(() => {
 		if (id) {
 			fetchTask();
 		}
@@ -104,13 +118,19 @@ export default function TaskDetailPage() {
 
 					<Card className="bg-white/95 backdrop-blur-sm shadow-lg">
 						<CardHeader>
-							<h1 className="text-2xl font-bold">{task.title}</h1>
+							<h1 className="text-2xl font-bold">
+								{task?.title || 'Untitled Task'}
+							</h1>
 							<div className="flex items-center justify-between mt-2">
 								<span className="text-sm text-gray-500">
-									Category: {task.category}
+									Category:{' '}
+									{task?.category || 'Uncategorized'}
 								</span>
 								<span className="text-sm text-gray-500">
-									Due: {format(new Date(task.dueDate), 'PPP')}
+									Due:{' '}
+									{task?.dueDate
+										? format(new Date(task.dueDate), 'PPP')
+										: 'No due date'}
 								</span>
 							</div>
 						</CardHeader>
@@ -135,7 +155,7 @@ export default function TaskDetailPage() {
 								</p>
 							</div>
 
-							<div className="grid grid-cols-2 gap-4">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div className="p-4 bg-purple-50 rounded-lg">
 									<h2 className="font-semibold mb-2">
 										Pledge Goal
@@ -146,6 +166,10 @@ export default function TaskDetailPage() {
 									<p className="text-sm text-gray-500">
 										${task.pledgeAmount} pledged so far
 									</p>
+
+									<div className="mt-4 pt-4 border-t border-purple-100">
+										<TopContributors taskId={task.id} />
+									</div>
 								</div>
 								<div className="p-4 bg-blue-50 rounded-lg">
 									<h2 className="font-semibold mb-2">
@@ -160,10 +184,22 @@ export default function TaskDetailPage() {
 								</div>
 							</div>
 
-							<div className="flex justify-center">
-								<Button className="bg-[#7B2869] hover:bg-[#3D1766] w-full max-w-md">
-									Pledge to Help
-								</Button>
+							<div className="p-4 bg-purple-50 rounded-lg">
+								<h2 className="font-semibold mb-4">
+									Make a Pledge
+								</h2>
+								<PledgeForm
+									taskId={task.id}
+									suggestedAmount={20}
+									onPledgeComplete={() => {
+										// Refresh the task data
+										fetchTask();
+									}}
+								/>
+							</div>
+
+							<div className="p-4 bg-gray-50 rounded-lg">
+								<PledgesList taskId={task.id} />
 							</div>
 						</CardContent>
 					</Card>

@@ -24,7 +24,8 @@ export interface Task {
 	contributors: number;
 	category: TaskCategory;
 	imageUrl?: string;
-	gifUrl?: string;
+	createdBy: string;
+	privacy?: string;
 }
 
 export type FilterTab =

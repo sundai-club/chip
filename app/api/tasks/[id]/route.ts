@@ -1,42 +1,67 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-client';
 
 export async function GET(
 	request: Request,
 	{ params }: { params: { id: string } }
 ) {
-	const id = params.id;
-	const supabase = createServerSupabaseClient();
+	try {
+		const id = params.id;
 
-	const { data: task, error } = await supabase
-		.from('tasks')
-		.select('*, profiles(username, avatar_url)')
-		.eq('id', id)
-		.single();
+		// Get the task
+		const { data: task, error: taskError } = await supabase
+			.from('tasks')
+			.select('*')
+			.eq('id', id)
+			.single();
 
-	if (error) {
-		return NextResponse.json({ error: error.message }, { status: 500 });
+		if (taskError) {
+			console.error(`Error fetching task ${id}:`, taskError);
+			return NextResponse.json(
+				{ error: taskError.message },
+				{ status: 404 }
+			);
+		}
+
+		// Get sum of pledges for this task
+		const { data: pledges, error: pledgesError } = await supabase
+			.from('pledges')
+			.select('amount, user_id')
+			.eq('task_id', id);
+
+		if (pledgesError) {
+			console.error(
+				`Error fetching pledges for task ${id}:`,
+				pledgesError
+			);
+			return NextResponse.json({
+				...task,
+				pledgeAmount: 0,
+				contributors: 0,
+			});
+		}
+
+		// Calculate total pledge amount
+		const totalPledged = pledges.reduce(
+			(sum, pledge) => sum + (parseFloat(pledge.amount) || 0),
+			0
+		);
+
+		// Count unique contributors
+		const uniqueContributorCount = new Set(pledges.map((p) => p.user_id))
+			.size;
+
+		// Return task with updated pledge data
+		return NextResponse.json({
+			...task,
+			pledgeAmount: totalPledged,
+			contributors: uniqueContributorCount,
+		});
+	} catch (error) {
+		console.error('Unexpected error fetching task:', error);
+		return NextResponse.json(
+			{ error: 'An unexpected error occurred' },
+			{ status: 500 }
+		);
 	}
-
-	if (!task) {
-		return NextResponse.json({ error: 'Task not found' }, { status: 404 });
-	}
-
-	// Transform the data to match your Task type
-	const formattedTask = {
-		id: task.id,
-		title: task.title,
-		description: task.description,
-		dueDate: task.due_date,
-		pledgeAmount: task.pledge_amount,
-		goalAmount: task.goal_amount,
-		status: task.status,
-		contributors: task.contributors,
-		category: task.category,
-		imageUrl: task.image_url,
-		createdBy: task.profiles?.username || 'Unknown',
-		privacy: task.privacy,
-	};
-
-	return NextResponse.json(formattedTask);
 }

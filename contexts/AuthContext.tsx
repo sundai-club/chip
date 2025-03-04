@@ -2,13 +2,20 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase-client';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, WeakPassword } from '@supabase/supabase-js';
 
 type AuthContextType = {
 	user: User | null;
 	session: Session | null;
 	isLoading: boolean;
-	signIn: (email: string, password: string) => Promise<void>;
+	signIn: (
+		email: string,
+		password: string
+	) => Promise<{
+		user: User;
+		session: Session;
+		weakPassword?: WeakPassword;
+	}>;
 	signUp: (
 		email: string,
 		password: string,
@@ -39,11 +46,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	}, []);
 
 	const signIn = async (email: string, password: string) => {
-		const { error } = await supabase.auth.signInWithPassword({
-			email,
-			password,
-		});
-		if (error) throw error;
+		try {
+			// Clear any existing sessions first
+			await supabase.auth.signOut();
+
+			// Sign in with password
+			const { data, error } = await supabase.auth.signInWithPassword({
+				email,
+				password,
+			});
+
+			if (error) throw error;
+
+			setUser(data.user);
+			setSession(data.session);
+
+			console.log('Auth session after sign in:', data.session);
+
+			// Explicitly set the session in cookies via an API call
+			if (data.session) {
+				try {
+					const response = await fetch('/api/auth/session', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Authorization: `Bearer ${data.session.access_token}`,
+						},
+						body: JSON.stringify({
+							refresh_token: data.session.refresh_token,
+						}),
+					});
+
+					if (!response.ok) {
+						console.error(
+							'Failed to set session cookie:',
+							await response.text()
+						);
+					} else {
+						console.log('Session cookie set successfully');
+					}
+				} catch (e) {
+					console.error('Error setting session cookie:', e);
+				}
+			}
+
+			return data;
+		} catch (error) {
+			console.error('Error signing in:', error);
+			throw error;
+		}
 	};
 
 	const signUp = async (

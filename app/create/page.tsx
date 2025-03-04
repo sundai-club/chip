@@ -168,10 +168,10 @@ export default function CreateTaskPage() {
 				due_date: date ? date.toISOString().split('T')[0] : null,
 				category: taskCategory,
 				goal_amount: parseFloat(taskGoalAmount),
-				pledge_amount: parseFloat(taskSuggestedPledge),
 				privacy: taskPrivacy,
 				image_url: selectedGif,
 				created_by: user.id,
+				contributors: 0,
 			});
 
 			const { data, error } = await supabase
@@ -182,10 +182,10 @@ export default function CreateTaskPage() {
 					due_date: date ? date.toISOString().split('T')[0] : null,
 					category: taskCategory,
 					goal_amount: parseFloat(taskGoalAmount),
-					pledge_amount: parseFloat(taskSuggestedPledge),
 					privacy: taskPrivacy,
 					image_url: selectedGif,
 					created_by: user.id,
+					contributors: 0,
 				})
 				.select();
 
