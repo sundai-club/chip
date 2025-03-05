@@ -40,6 +40,8 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase-client';
+import { DatePickerWithConfirm } from '@/components/ui/date-picker-with-confirm';
+import { CustomDatePicker } from '@/components/ui/custom-date-picker';
 
 export default function CreateTaskPage() {
 	const [step, setStep] = useState(1);
@@ -154,6 +156,26 @@ export default function CreateTaskPage() {
 		}
 	}, [giphyResults]);
 
+	useEffect(() => {
+		// Target the specific calendar in this component
+		const calendar = document.querySelector('.popover-calendar');
+		if (!calendar) return;
+
+		const headerCells = calendar.querySelectorAll('.rdp-head_cell');
+		const dayCells = calendar.querySelectorAll('.rdp-cell');
+
+		// Apply direct styles
+		headerCells.forEach((cell) => {
+			(cell as HTMLElement).style.textAlign = 'center';
+			(cell as HTMLElement).style.width = '40px';
+		});
+
+		// Align day cells
+		dayCells.forEach((cell) => {
+			(cell as HTMLElement).style.textAlign = 'center';
+		});
+	}, []);
+
 	const submitTask = async () => {
 		if (!user) {
 			console.error('User not authenticated');
@@ -202,6 +224,8 @@ export default function CreateTaskPage() {
 			alert('Failed to create task. Please try again.');
 		}
 	};
+
+	const popoverTriggerRef = useRef<HTMLButtonElement>(null);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-500 to-pink-500">
@@ -283,7 +307,7 @@ export default function CreateTaskPage() {
 										</Label>
 										<Select
 											value={taskCategory}
-											onChange={(value) =>
+											onValueChange={(value) =>
 												setTaskCategory(value)
 											}
 										>
@@ -434,6 +458,7 @@ export default function CreateTaskPage() {
 										<Popover>
 											<PopoverTrigger asChild>
 												<Button
+													ref={popoverTriggerRef}
 													variant="outline"
 													className="w-full justify-start text-left font-normal"
 												>
@@ -448,11 +473,16 @@ export default function CreateTaskPage() {
 												</Button>
 											</PopoverTrigger>
 											<PopoverContent className="w-auto p-0">
-												<Calendar
-													mode="single"
+												<CustomDatePicker
 													selected={date}
-													onSelect={setDate}
-													initialFocus
+													onSelect={(newDate) => {
+														setDate(newDate);
+														if (
+															popoverTriggerRef.current
+														) {
+															popoverTriggerRef.current.click();
+														}
+													}}
 												/>
 											</PopoverContent>
 										</Popover>

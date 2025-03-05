@@ -11,6 +11,7 @@ import type { Task, FilterTab, SortOption, TaskCategory } from '@/lib/types';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { TaskCardGrid } from '@/components/task-card-grid';
 
 export default function Dashboard() {
 	const [tasks, setTasks] = useState<Task[]>([]);
@@ -190,11 +191,7 @@ export default function Dashboard() {
 							</p>
 						</div>
 					) : (
-						<div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-							{filteredTasks.map((task) => (
-								<TaskCard key={task.id} task={task} />
-							))}
-						</div>
+						<TaskCardGrid tasks={filteredTasks} />
 					)}
 				</div>
 			</main>

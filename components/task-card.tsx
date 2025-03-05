@@ -118,8 +118,9 @@ export function TaskCard({ task }: TaskCardProps) {
 		<Link
 			href={`/tasks/${task.id}`}
 			key={`task-${task.id}-pledged-${hasUserPledged.toString()}`}
+			className="h-full block"
 		>
-			<Card className="overflow-hidden transition-all duration-200 hover:shadow-lg bg-white/90 backdrop-blur-sm border-0">
+			<Card className="h-full overflow-hidden transition-all duration-200 hover:shadow-lg bg-white/90 backdrop-blur-sm border-0">
 				<CardHeader className="p-4 pb-0">
 					<div
 						key={`${task.id}-${hasUserPledged}`}

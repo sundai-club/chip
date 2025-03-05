@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
-// For client components and pages directory
+// Use this client for all purposes
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 	auth: {
 		persistSession: true,
@@ -12,12 +12,5 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 		detectSessionInUrl: true,
 		storageKey: 'supabase.auth.token',
 		flowType: 'pkce',
-		cookieOptions: {
-			name: 'sb-auth-token',
-			lifetime: 60 * 60 * 8, // 8 hours
-			domain: '',
-			path: '/',
-			sameSite: 'lax',
-		},
 	},
 });
